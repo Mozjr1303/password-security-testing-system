@@ -1,0 +1,256 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("POSTGRES_DATABASE_URL")
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  role_name   String   @unique
+  permissions String
+  created_at  DateTime @default(now())
+  users       User[]
+
+  @@map("roles")
+}
+
+model User {
+  id                  String          @id @default(uuid())
+  full_name           String
+  email               String          @unique
+  password_hash       String
+  role_id             String
+  reset_token         String?
+  reset_token_expires DateTime?
+  session_timeout_min Int             @default(30)
+  created_at          DateTime        @default(now())
+  updated_at          DateTime        @updatedAt
+  role                Role            @relation(fields: [role_id], references: [id])
+  assessments         Assessment[]
+  audit_logs          AuditLog[]
+  laboratory_jobs     LaboratoryJob[]
+  datasets            Dataset[]
+
+  @@map("users")
+}
+
+model Assessment {
+  id                  String               @id @default(uuid())
+  user_id             String
+  assessment_name     String
+  description         String?
+  assessment_type     String
+  status              String               @default("COMPLETED")
+  overall_score       Float                @default(0)
+  risk_classification String               @default("Moderate")
+  score_type          String               @default("Measured")
+  created_at          DateTime             @default(now())
+  completed_at        DateTime?
+  user                User                 @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  password_tests      PasswordTest[]
+  hash_analyses       HashAnalysis[]
+  benchmarks          AlgorithmBenchmark[]
+  storage_assessments StorageAssessment[]
+  security_findings   SecurityFinding[]
+  reports             Report[]
+  audit_logs          AuditLog[]
+  laboratory_jobs     LaboratoryJob[]
+
+  @@map("assessments")
+}
+
+model PasswordTest {
+  id                   String     @id @default(uuid())
+  assessment_id        String
+  password_length      Int
+  length_score         Float
+  complexity_score     Float
+  entropy_estimate     Float
+  strength_category    String
+  overall_score        Float
+  estimated_crack_time String
+  character_sets       String
+  pattern_findings     String
+  weaknesses           String
+  recommendations      String
+  created_at           DateTime   @default(now())
+  assessment           Assessment @relation(fields: [assessment_id], references: [id], onDelete: Cascade)
+
+  @@map("password_tests")
+}
+
+model Dataset {
+  id              String          @id @default(uuid())
+  dataset_name    String
+  description     String
+  dataset_type    String
+  category        String          @default("General Laboratory")
+  record_count    Int             @default(0)
+  content_json    String
+  created_by      String
+  created_at      DateTime        @default(now())
+  creator         User            @relation(fields: [created_by], references: [id])
+  hash_samples    HashSample[]
+  laboratory_jobs LaboratoryJob[]
+
+  @@map("datasets")
+}
+
+model HashSample {
+  id            String   @id @default(uuid())
+  dataset_id    String
+  label         String
+  algorithm     String
+  sample_hash   String
+  salt          String?
+  configuration String
+  hint          String?
+  created_at    DateTime @default(now())
+  dataset       Dataset  @relation(fields: [dataset_id], references: [id], onDelete: Cascade)
+
+  @@map("hash_samples")
+}
+
+model HashAnalysis {
+  id                  String     @id @default(uuid())
+  assessment_id       String
+  sample_hash_preview String
+  algorithm           String
+  hash_category       String
+  hash_format_valid   Boolean
+  salt_status         String
+  work_factor         String
+  memory_cost         String     @default("Minimal (< 1 KB)")
+  suitability         String
+  audit_status        String
+  execution_time      Float
+  weaknesses          String
+  recommendations     String
+  created_at          DateTime   @default(now())
+  assessment          Assessment @relation(fields: [assessment_id], references: [id], onDelete: Cascade)
+
+  @@map("hash_analyses")
+}
+
+model AlgorithmBenchmark {
+  id              String     @id @default(uuid())
+  assessment_id   String
+  algorithm       String
+  execution_time  Float
+  memory_usage    Float
+  configuration   String
+  salt_support    String
+  suitability     String
+  security_rating Float
+  resistance      String
+  created_at      DateTime   @default(now())
+  assessment      Assessment @relation(fields: [assessment_id], references: [id], onDelete: Cascade)
+
+  @@map("algorithm_benchmarks")
+}
+
+model StorageAssessment {
+  id                   String     @id @default(uuid())
+  assessment_id        String
+  algorithm            String
+  salt_configuration   String
+  salt_uniqueness      Boolean    @default(true)
+  work_factor          Int
+  memory_cost          Int
+  iteration_count      Int
+  storage_format       String
+  reset_implementation String
+  mfa_enabled          Boolean    @default(false)
+  rate_limiting        Boolean    @default(false)
+  security_score       Float
+  score_classification String
+  score_type           String     @default("Measured")
+  category_scores      String
+  findings_summary     String
+  created_at           DateTime   @default(now())
+  assessment           Assessment @relation(fields: [assessment_id], references: [id], onDelete: Cascade)
+
+  @@map("storage_assessments")
+}
+
+model SecurityFinding {
+  id              String           @id @default(uuid())
+  assessment_id   String
+  finding_title   String
+  description     String
+  severity        String
+  impact          String
+  category        String           @default("Password Storage")
+  created_at      DateTime         @default(now())
+  assessment      Assessment       @relation(fields: [assessment_id], references: [id], onDelete: Cascade)
+  recommendations Recommendation[]
+
+  @@map("security_findings")
+}
+
+model Recommendation {
+  id                     String          @id @default(uuid())
+  finding_id             String
+  recommendation         String
+  priority               String
+  implementation_details String
+  code_snippet           String?
+  created_at             DateTime        @default(now())
+  finding                SecurityFinding @relation(fields: [finding_id], references: [id], onDelete: Cascade)
+
+  @@map("recommendations")
+}
+
+model Report {
+  id            String     @id @default(uuid())
+  assessment_id String
+  report_number String     @unique
+  report_type   String
+  file_path     String
+  summary_json  String
+  generated_at  DateTime   @default(now())
+  assessment    Assessment @relation(fields: [assessment_id], references: [id], onDelete: Cascade)
+
+  @@map("reports")
+}
+
+model AuditLog {
+  id            String      @id @default(uuid())
+  user_id       String
+  activity_type String
+  assessment_id String?
+  status        String
+  metadata      String
+  created_at    DateTime    @default(now())
+  user          User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  assessment    Assessment? @relation(fields: [assessment_id], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+}
+
+model LaboratoryJob {
+  id               String      @id @default(uuid())
+  user_id          String
+  dataset_id       String?
+  assessment_id    String?
+  experiment_id    String
+  job_type         String
+  target_algorithm String
+  status           String
+  attempts_count   Int         @default(0)
+  max_attempts     Int         @default(5000)
+  execution_time   Float       @default(0)
+  matched_count    Int         @default(0)
+  total_targets    Int         @default(1)
+  result_summary   String
+  created_at       DateTime    @default(now())
+  completed_at     DateTime?
+  user             User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  dataset          Dataset?    @relation(fields: [dataset_id], references: [id], onDelete: SetNull)
+  assessment       Assessment? @relation(fields: [assessment_id], references: [id], onDelete: SetNull)
+
+  @@map("laboratory_jobs")
+}

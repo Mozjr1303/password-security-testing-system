@@ -1,0 +1,62 @@
+[
+  {
+    "id": "SAMPLE-ARGON2ID-01",
+    "label": "Hardened Argon2id PHC Sample (64 MB, t=3, p=4)",
+    "algorithm": "Argon2id",
+    "category": "Adaptive password hashing",
+    "sample_hash": "$argon2id$v=19$m=65536,t=3,p=4$Qmbz2BQvw7UOl0dd88y4SA$MRFvXixDWIZIFSD7PUfYgqCi68hjyaX/eEXrKv2WzRQ",
+    "salt": "Qmbz2BQvw7UOl0dd88y4SA",
+    "work_factor": "m=65536 KB (64 MB), t=3 iterations, p=4 lanes",
+    "suitability": "Preferred Modern Standard"
+  },
+  {
+    "id": "SAMPLE-BCRYPT-01",
+    "label": "bcrypt Adaptive Sample (Cost=12, 128-bit Salt)",
+    "algorithm": "bcrypt",
+    "category": "Adaptive password hashing",
+    "sample_hash": "$2b$12$eImiTXuWVxfM37uY4JANjQ.9rB1zO7K3nU4wV2xL8mP1qR5tY9zW2",
+    "salt": "eImiTXuWVxfM37uY4JANjQ",
+    "work_factor": "cost=12 (4,096 Eksblowfish rounds)",
+    "suitability": "Recommended"
+  },
+  {
+    "id": "SAMPLE-PBKDF2-01",
+    "label": "PBKDF2-HMAC-SHA256 Sample (600,000 iterations)",
+    "algorithm": "PBKDF2",
+    "category": "Password-specific hashing",
+    "sample_hash": "pbkdf2_sha256$600000$9f8e7d6c5b4a3f2e$a7c9e1b3d5f702468ace13579bdf02468ace13579bdf02468ace13579bdf0246",
+    "salt": "9f8e7d6c5b4a3f2e",
+    "work_factor": "600,000 HMAC-SHA256 iterations",
+    "suitability": "Acceptable (FIPS/NIST Compliance)"
+  },
+  {
+    "id": "SAMPLE-SHA256-01",
+    "label": "Fast General-Purpose SHA-256 Digest (Synthetic 'Dragon!')",
+    "algorithm": "SHA-256",
+    "category": "General-purpose cryptographic hashing",
+    "sample_hash": "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae",
+    "salt": null,
+    "work_factor": "1 pass (No key stretching)",
+    "suitability": "Unsuitable Alone (Fast General-Purpose)"
+  },
+  {
+    "id": "SAMPLE-SHA1-01",
+    "label": "Legacy Unsalted SHA-1 Digest (Synthetic 'admin123')",
+    "algorithm": "SHA-1",
+    "category": "General-purpose cryptographic hashing",
+    "sample_hash": "f865b53623b121fd34ee5426c792e5c33af8c227",
+    "salt": null,
+    "work_factor": "1 pass (Legacy Broken)",
+    "suitability": "Unsuitable (Legacy Collision-Prone)"
+  },
+  {
+    "id": "SAMPLE-MD5-01",
+    "label": "Legacy Unsalted MD5 Digest (Synthetic 'welcome123')",
+    "algorithm": "MD5",
+    "category": "General-purpose cryptographic hashing",
+    "sample_hash": "40be4e59b9a2a2b5dffb918c0e86b3d7",
+    "salt": null,
+    "work_factor": "1 pass (Legacy Broken)",
+    "suitability": "Unsuitable (Legacy Broken)"
+  }
+]

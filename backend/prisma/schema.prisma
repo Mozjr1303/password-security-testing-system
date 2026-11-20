@@ -1,0 +1,256 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  role_name   String   @unique
+  permissions String   // JSON array of permission strings
+  created_at  DateTime @default(now())
+  users       User[]
+
+  @@map("roles")
+}
+
+model User {
+  id                  String          @id @default(uuid())
+  full_name           String
+  email               String          @unique
+  password_hash       String
+  role_id             String
+  reset_token         String?
+  reset_token_expires DateTime?
+  session_timeout_min Int             @default(30)
+  created_at          DateTime        @default(now())
+  updated_at          DateTime        @updatedAt
+  role                Role            @relation(fields: [role_id], references: [id])
+  assessments         Assessment[]
+  audit_logs          AuditLog[]
+  laboratory_jobs     LaboratoryJob[]
+  datasets            Dataset[]
+
+  @@map("users")
+}
+
+model Assessment {
+  id                  String               @id @default(uuid())
+  user_id             String
+  assessment_name     String
+  description         String?
+  assessment_type     String               // e.g., "Full Security Assessment", "Password Strength", "Hash Analysis", "Storage Config", "Lab Experiment"
+  status              String               @default("COMPLETED") // IN_PROGRESS, COMPLETED, FAILED
+  overall_score       Float                @default(0)
+  risk_classification String               @default("Moderate") // Excellent, Good, Moderate, Poor, Critical
+  score_type          String               @default("Measured") // Measured vs Estimated
+  created_at          DateTime             @default(now())
+  completed_at        DateTime?
+  user                User                 @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  password_tests      PasswordTest[]
+  hash_analyses       HashAnalysis[]
+  benchmarks          AlgorithmBenchmark[]
+  storage_assessments StorageAssessment[]
+  security_findings   SecurityFinding[]
+  reports             Report[]
+  audit_logs          AuditLog[]
+  laboratory_jobs     LaboratoryJob[]
+
+  @@map("assessments")
+}
+
+model PasswordTest {
+  id                   String     @id @default(uuid())
+  assessment_id        String
+  password_length      Int
+  length_score         Float
+  complexity_score     Float
+  entropy_estimate     Float
+  strength_category    String     // Very Weak, Weak, Moderate, Strong, Very Strong
+  overall_score        Float
+  estimated_crack_time String
+  character_sets       String     // JSON: { uppercase, lowercase, digits, symbols }
+  pattern_findings     String     // JSON array of detected patterns
+  weaknesses           String     // JSON array of detected weaknesses
+  recommendations      String     // JSON array of improvement recommendations
+  created_at           DateTime   @default(now())
+  assessment           Assessment @relation(fields: [assessment_id], references: [id], onDelete: Cascade)
+
+  @@map("password_tests")
+}
+
+model Dataset {
+  id              String          @id @default(uuid())
+  dataset_name    String
+  description     String
+  dataset_type    String          // "SYNTHETIC_PASSWORDS", "HASH_SAMPLES", "EDUCATIONAL_WORDLIST"
+  category        String          @default("General Laboratory")
+  record_count    Int             @default(0)
+  content_json    String          // JSON array of synthetic educational entries
+  created_by      String
+  created_at      DateTime        @default(now())
+  creator         User            @relation(fields: [created_by], references: [id])
+  hash_samples    HashSample[]
+  laboratory_jobs LaboratoryJob[]
+
+  @@map("datasets")
+}
+
+model HashSample {
+  id            String   @id @default(uuid())
+  dataset_id    String
+  label         String
+  algorithm     String
+  sample_hash   String
+  salt          String?
+  configuration String   // JSON configuration parameters
+  hint          String?
+  created_at    DateTime @default(now())
+  dataset       Dataset  @relation(fields: [dataset_id], references: [id], onDelete: Cascade)
+
+  @@map("hash_samples")
+}
+
+model HashAnalysis {
+  id                  String     @id @default(uuid())
+  assessment_id       String
+  sample_hash_preview String
+  algorithm           String
+  hash_category       String     // General-purpose, Password-specific, Salted, Adaptive
+  hash_format_valid   Boolean
+  salt_status         String     // Unsalted, Embedded Random Salt, Static/External Salt
+  work_factor         String
+  memory_cost         String     @default("Minimal (< 1 KB)")
+  suitability         String     // Unsuitable (Legacy), Unsuitable (Fast Hash), Acceptable, Recommended (Modern Standard)
+  audit_status        String
+  execution_time      Float      // ms
+  weaknesses          String     // JSON array
+  recommendations     String     // JSON array
+  created_at          DateTime   @default(now())
+  assessment          Assessment @relation(fields: [assessment_id], references: [id], onDelete: Cascade)
+
+  @@map("hash_analyses")
+}
+
+model AlgorithmBenchmark {
+  id              String     @id @default(uuid())
+  assessment_id   String
+  algorithm       String
+  execution_time  Float      // ms per hash
+  memory_usage    Float      // KB
+  configuration   String     // JSON
+  salt_support    String
+  suitability     String
+  security_rating Float      // 0-100
+  resistance      String
+  created_at      DateTime   @default(now())
+  assessment      Assessment @relation(fields: [assessment_id], references: [id], onDelete: Cascade)
+
+  @@map("algorithm_benchmarks")
+}
+
+model StorageAssessment {
+  id                   String     @id @default(uuid())
+  assessment_id        String
+  algorithm            String
+  salt_configuration   String
+  salt_uniqueness      Boolean    @default(true)
+  work_factor          Int
+  memory_cost          Int        // KB
+  iteration_count      Int
+  storage_format       String
+  reset_implementation String
+  mfa_enabled          Boolean    @default(false)
+  rate_limiting        Boolean    @default(false)
+  security_score       Float
+  score_classification String     // Excellent, Good, Moderate, Poor, Critical
+  score_type           String     @default("Measured")
+  category_scores      String     // JSON breakdown per Section 9
+  findings_summary     String     // JSON array
+  created_at           DateTime   @default(now())
+  assessment           Assessment @relation(fields: [assessment_id], references: [id], onDelete: Cascade)
+
+  @@map("storage_assessments")
+}
+
+model SecurityFinding {
+  id              String           @id @default(uuid())
+  assessment_id   String
+  finding_title   String
+  description     String
+  severity        String           // Critical, High, Medium, Low, Informational
+  impact          String
+  category        String           @default("Password Storage")
+  created_at      DateTime         @default(now())
+  assessment      Assessment       @relation(fields: [assessment_id], references: [id], onDelete: Cascade)
+  recommendations Recommendation[]
+
+  @@map("security_findings")
+}
+
+model Recommendation {
+  id                     String          @id @default(uuid())
+  finding_id             String
+  recommendation         String
+  priority               String          // Immediate, High, Medium, Low
+  implementation_details String
+  code_snippet           String?
+  created_at             DateTime        @default(now())
+  finding                SecurityFinding @relation(fields: [finding_id], references: [id], onDelete: Cascade)
+
+  @@map("recommendations")
+}
+
+model Report {
+  id            String     @id @default(uuid())
+  assessment_id String
+  report_number String     @unique
+  report_type   String     // "PDF", "CSV", "FULL_BUNDLE"
+  file_path     String
+  summary_json  String     // Full 14-section report payload for preview & export
+  generated_at  DateTime   @default(now())
+  assessment    Assessment @relation(fields: [assessment_id], references: [id], onDelete: Cascade)
+
+  @@map("reports")
+}
+
+model AuditLog {
+  id            String      @id @default(uuid())
+  user_id       String
+  activity_type String
+  assessment_id String?
+  status        String      // SUCCESS, WARNING, BLOCKED, ERROR
+  metadata      String      // JSON non-sensitive metadata
+  created_at    DateTime    @default(now())
+  user          User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  assessment    Assessment? @relation(fields: [assessment_id], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+}
+
+model LaboratoryJob {
+  id               String      @id @default(uuid())
+  user_id          String
+  dataset_id       String?
+  assessment_id    String?
+  experiment_id    String      // EXP-1 through EXP-6 or CUSTOM_AUDIT
+  job_type         String      // DICTIONARY_AUDIT, BRUTE_FORCE_DEMO, SALT_DEMO, STRENGTH_COMPARISON, ALGO_BENCHMARK, STORAGE_EVAL
+  target_algorithm String
+  status           String      // RUNNING, COMPLETED, CANCELLED, LIMIT_REACHED
+  attempts_count   Int         @default(0)
+  max_attempts     Int         @default(5000)
+  execution_time   Float       @default(0) // ms
+  matched_count    Int         @default(0)
+  total_targets    Int         @default(1)
+  result_summary   String      // JSON detailed results, lessons, recommendations
+  created_at       DateTime    @default(now())
+  completed_at     DateTime?
+  user             User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  dataset          Dataset?    @relation(fields: [dataset_id], references: [id], onDelete: SetNull)
+  assessment       Assessment? @relation(fields: [assessment_id], references: [id], onDelete: SetNull)
+
+  @@map("laboratory_jobs")
+}
